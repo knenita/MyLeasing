@@ -5,7 +5,6 @@ using MyLeasing.Web.Data;
 using MyLeasing.Web.Data.Entities;
 using MyLeasing.Web.Helpers;
 using MyLeasing.Web.Models;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -17,13 +16,19 @@ namespace MyLeasing.Web.Controllers
     {
         private readonly DataContext _dataContext;
         private readonly IUserHelper _userHelper;
+        private readonly ICombosHelper _combosHelper;
+        private readonly IConverterHelper _converterHelper;
 
         public OwnersController(
             DataContext dataContext,
-            IUserHelper userHelper)
+            IUserHelper userHelper,
+            ICombosHelper combosHelper,
+            IConverterHelper converterHelper)
         {
             _dataContext = dataContext;
             _userHelper = userHelper;
+            _combosHelper = combosHelper;
+            _converterHelper = converterHelper;
         }
 
         // GET: Owners
@@ -72,19 +77,19 @@ namespace MyLeasing.Web.Controllers
         {
             if (ModelState.IsValid)
             {
-                var user = await CreateUserAsync(model);
-                if(user != null)
+                User user = await CreateUserAsync(model);
+                if (user != null)
                 {
-                    var owner = new Owner
+                    Owner owner = new Owner
                     {
                         Contracts = new List<Contract>(),
                         Properties = new List<Property>(),
                         User = user
-                };
-                _dataContext.Owners.Add(owner);
-                await _dataContext.SaveChangesAsync();
-                return RedirectToAction("Index");
-            }
+                    };
+                    _dataContext.Owners.Add(owner);
+                    await _dataContext.SaveChangesAsync();
+                    return RedirectToAction("Index");
+                }
                 ModelState.AddModelError(string.Empty, "User with this email already exist");
             }
             return View(model);
@@ -92,7 +97,7 @@ namespace MyLeasing.Web.Controllers
 
         private async Task<User> CreateUserAsync(AddUserViewModel model)
         {
-            var user = new User
+            User user = new User
             {
                 Address = model.Address,
                 Document = model.Document,
@@ -102,8 +107,8 @@ namespace MyLeasing.Web.Controllers
                 PhoneNumber = model.PhoneNumber,
                 UserName = model.Username
             };
-            var result = await _userHelper.AddUserAsync(user, model.Password);
-            if(result.Succeeded)
+            Microsoft.AspNetCore.Identity.IdentityResult result = await _userHelper.AddUserAsync(user, model.Password);
+            if (result.Succeeded)
             {
                 user = await _userHelper.GetUserByEmailAsync(model.Username);
                 await _userHelper.AddUserToRoleAsync(user, "Owner");
@@ -188,6 +193,41 @@ namespace MyLeasing.Web.Controllers
             _dataContext.Owners.Remove(owner);
             await _dataContext.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
+        }
+
+        // GET: Owners/AddProperty
+        public async Task<IActionResult> AddProperty(int? id)//id codigo del propietario
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            Owner owner = await _dataContext.Owners.FindAsync(id); //busqueda por PK
+            if (owner == null)
+            {
+                return NotFound();
+            }
+            PropertyViewModel model = new PropertyViewModel
+            {
+                OwnerId = owner.Id,
+                PropertyTypes = _combosHelper.GetComboPropetyTypes()
+            };
+            return View(model);
+        }
+
+        // POST: Owners/AddProperty
+        [HttpPost]
+        public async Task<IActionResult> AddProperty(PropertyViewModel model)
+        {
+            if (ModelState.IsValid)
+            {
+                var property = await _converterHelper.ToPropertyAsync(model, true);
+                _dataContext.Properties.Add(property);
+                await _dataContext.SaveChangesAsync();
+                return RedirectToAction($"{nameof(Details)}/{model.OwnerId}");
+            }
+            return View(model);
         }
 
         private bool OwnerExists(int id)
