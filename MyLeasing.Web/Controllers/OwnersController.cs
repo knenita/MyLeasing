@@ -5,6 +5,7 @@ using MyLeasing.Web.Data;
 using MyLeasing.Web.Data.Entities;
 using MyLeasing.Web.Helpers;
 using MyLeasing.Web.Models;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -338,6 +339,49 @@ namespace MyLeasing.Web.Controllers
                 return RedirectToAction($"{nameof(DetailsProperty)}/{model.Id}");
             }
 
+            return View(model);
+        }
+
+        // GET: Owners/AddContract
+        public async Task<IActionResult> AddContract(int? id)//id de la propiedad a la que se le adiciona contrato
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var property = await _dataContext.Properties
+                .Include(p => p.Owner)
+                .FirstOrDefaultAsync(p => p.Id == id.Value);
+            if (property == null)
+            {
+                return NotFound();
+            }
+
+            var model = new ContractViewModel
+            {
+                OwnerId = property.Owner.Id,
+                PropertyId = property.Id,
+                Lessees = _combosHelper.GetComboLessees(),
+                Price = property.Price,
+                StartDate = DateTime.Today,
+                EndDate = DateTime.Today.AddYears(1)
+            };
+
+            return View(model);
+        }
+
+        // POST: Owners/AddContract
+        [HttpPost]
+        public async Task<IActionResult> AddContract(ContractViewModel model)
+        {
+            if (ModelState.IsValid)
+            {
+                var contract = await _converterHelper.ToContractAsync(model, true);
+                _dataContext.Contracts.Add(contract);
+                await _dataContext.SaveChangesAsync();
+                return RedirectToAction($"{nameof(DetailsProperty)}/{model.PropertyId}");
+            }
             return View(model);
         }
 
