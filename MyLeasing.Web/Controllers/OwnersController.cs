@@ -385,6 +385,41 @@ namespace MyLeasing.Web.Controllers
             return View(model);
         }
 
+        // GET: Owners/EditContract
+        public async Task<IActionResult> EditContract(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var contract = await _dataContext.Contracts
+                .Include(c => c.Owner)
+                .Include(c => c.Lessee)
+                .Include(c => c.Property)
+                .FirstOrDefaultAsync(p => p.Id == id.Value);
+            if (contract == null)
+            {
+                return NotFound();
+            }
+
+            return View(_converterHelper.ToContractViewModel(contract));
+        }
+
+        // POST: Owners/EditContract
+        [HttpPost]
+        public async Task<IActionResult> EditContract(ContractViewModel model)
+        {
+            if (ModelState.IsValid)
+            {
+                var contract = await _converterHelper.ToContractAsync(model, false);
+                _dataContext.Contracts.Update(contract);
+                await _dataContext.SaveChangesAsync();
+                return RedirectToAction($"{nameof(DetailsProperty)}/{model.PropertyId}");
+            }
+            return View(model);
+        }
+
         private bool OwnerExists(int id)
         {
             return _dataContext.Owners.Any(e => e.Id == id);
