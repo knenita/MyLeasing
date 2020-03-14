@@ -56,6 +56,8 @@ namespace MyLeasing.Web.Controllers
                 .Include(o => o.User)
                 .Include(o => o.Properties)
                 .ThenInclude(p => p.PropertyImages)
+                .Include(o => o.Properties)
+                .ThenInclude(p => p.PropertyType)
                 .Include(o => o.Contracts)
                 .ThenInclude(c => c.Lessee)
                 .ThenInclude(l => l.User)
@@ -218,7 +220,7 @@ namespace MyLeasing.Web.Controllers
             PropertyViewModel model = new PropertyViewModel
             {
                 OwnerId = owner.Id,
-                PropertyTypes = _combosHelper.GetComboPropetyTypes()
+                PropertyTypes = _combosHelper.GetComboPropetyTypes(),          
             };
             return View(model);
         }
@@ -234,6 +236,7 @@ namespace MyLeasing.Web.Controllers
                 await _dataContext.SaveChangesAsync();
                 return RedirectToAction($"{nameof(Details)}/{model.OwnerId}");
             }
+            model.PropertyTypes = _combosHelper.GetComboPropetyTypes();
             return View(model);
         }
 
@@ -385,6 +388,7 @@ namespace MyLeasing.Web.Controllers
                 await _dataContext.SaveChangesAsync();
                 return RedirectToAction($"{nameof(DetailsProperty)}/{model.PropertyId}");
             }
+            model.Lessees = _combosHelper.GetComboLessees();
             return View(model);
         }
 
@@ -423,6 +427,7 @@ namespace MyLeasing.Web.Controllers
             return View(model);
         }
 
+        // GET: Owners/DeleteImage
         public async Task<IActionResult> DeleteImage(int? id)
         {
             if (id == null)
@@ -443,6 +448,7 @@ namespace MyLeasing.Web.Controllers
             return RedirectToAction($"{nameof(DetailsProperty)}/{propertyImage.Property.Id}");
         }
 
+        // GET: Owners/DeleteContract
         public async Task<IActionResult> DeleteContract(int? id)
         {
             if (id == null)
@@ -462,6 +468,60 @@ namespace MyLeasing.Web.Controllers
             await _dataContext.SaveChangesAsync();
             return RedirectToAction($"{nameof(DetailsProperty)}/{contract.Property.Id}");
         }
+
+        // GET: Owners/DeleteProperty
+        public async Task<IActionResult> DeleteProperty(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var property = await _dataContext.Properties
+                 .Include(p => p.Owner)
+                .Include(p => p.PropertyImages)
+                .Include(p => p.Contracts)
+                .FirstOrDefaultAsync(pi => pi.Id == id.Value);
+            if (property == null)
+            {
+                return NotFound();
+            }
+
+            if(property.Contracts.Count != 0 || property.PropertyImages.Count !=0)
+            {
+                ModelState.AddModelError(String.Empty, "The property cannot be deleted because it has related records");
+                return RedirectToAction($"{nameof(Details)}/{property.Owner.Id}");
+            }
+
+            _dataContext.Properties.Remove(property);
+            await _dataContext.SaveChangesAsync();
+            return RedirectToAction($"{nameof(Details)}/{property.Owner.Id}");
+        }
+
+        // GET: Owners/DetailsContract
+        public async Task<IActionResult> DetailsContract(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var contract = await _dataContext.Contracts
+                .Include(c => c.Owner)
+                .ThenInclude(o => o.User)
+                .Include(c => c.Lessee)
+                .ThenInclude(o => o.User)
+                .Include(c => c.Property)
+                .ThenInclude(p => p.PropertyType)
+                .FirstOrDefaultAsync(pi => pi.Id == id.Value);
+            if (contract == null)
+            {
+                return NotFound();
+            }
+
+            return View(contract);
+        }
+
 
         private bool OwnerExists(int id)
         {
