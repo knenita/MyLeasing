@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MyLeasing.Common.Models;
 using MyLeasing.Web.Data;
@@ -10,6 +12,7 @@ namespace MyLeasing.Web.Controllers.API
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     public class OwnersController : ControllerBase
     {
         private readonly DataContext _dataContext;
@@ -28,7 +31,7 @@ namespace MyLeasing.Web.Controllers.API
                 return BadRequest();
             }
 
-            var owner = await _dataContext.Owners
+            Owner owner = await _dataContext.Owners
                 .Include(o => o.User)
                 .Include(o => o.Properties)
                 .ThenInclude(p => p.PropertyType)
@@ -44,7 +47,7 @@ namespace MyLeasing.Web.Controllers.API
                 return NotFound();
             }
 
-            var response = new OwnerResponse
+            OwnerResponse response = new OwnerResponse
             {
                 Id = owner.Id,
                 FirstName = owner.User.FirstName,

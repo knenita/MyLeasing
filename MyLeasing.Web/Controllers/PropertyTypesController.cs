@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MyLeasing.Web.Data;
 using MyLeasing.Web.Data.Entities;
@@ -7,6 +8,7 @@ using System.Threading.Tasks;
 
 namespace MyLeasing.Web.Controllers
 {
+    [Authorize(Roles = "Manager")]
     public class PropertyTypesController : Controller
     {
         private readonly DataContext _context;
